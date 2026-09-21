@@ -17,7 +17,7 @@ Treat character art, generated images, standard or v2 atlases, contact sheets, a
 
 - Preserve user-provided art as a generation reference; do not assume it already has final cell geometry.
 - For an existing valid 8x9 atlas, use it as the rows `0-8` intermediate after deterministic and visual validation, then generate rows `9-10` and package the result as v2.
-- For an existing 8x11 atlas, preserve approved standard rows. If a look cell fails, correct the complete containing 8-frame row before deterministic reassembly. Never package a newly generated one-off repair cell beside cells from another generation.
+- For an existing 8x11 atlas, preserve approved standard rows. 方向单元失败时先按 Repair Workflow 区分确定性处理问题与源图重大错误；需要重新生成时，修复该单元所在的完整 8 帧行，再确定性重组。Never package a newly generated one-off repair cell beside cells from another generation.
 - For a built-in pet, extract and use its atlas or neutral/idle cell as the canonical identity reference.
 - Include every image that defines head shape, face, palette, markings, material, flame/ears/hair, props, or look mechanics in look-direction generation.
 - When a renderer or source provides a dedicated neutral/front frame, pass it through `--neutral-cell`; otherwise use the approved idle/default frame. The 16 directional cells never treat `000` as neutral.
@@ -213,17 +213,17 @@ After every failed attempt:
 1. Classify the failure as visual semantics, identity, source-edge geometry, component connectivity, extraction, chroma, continuity, or final visual QA.
 2. State the concrete evidence and the root condition the next action will change.
 3. Use a deterministic correction for deterministic failures before regenerating imagery.
-4. Regenerate only when the source visual is genuinely wrong, and preserve every property that already passed.
+4. 仅在确认源图存在 `major` 视觉错误时重新生成，并保留所有已通过的属性；`minor` 按 Blind Review Severity Resolution 留证处理，不自动重生成。
 5. Compare the new result with the previous one. A repair counts as progress only when it reduces the number or severity of failures without breaking a previously passing gate.
 
-If the same root failure recurs twice, stop varying the prompt and change strategy: strengthen the cardinal pose families or row-level direction instructions, simplify the pose or prop construction, change the deterministic extraction method, or redesign the problematic visual feature. If a repair merely moves a failure to another cell or gate, treat that as a cycle and change strategy immediately.
+If the same root failure recurs twice, stop varying the prompt and change strategy: strengthen the cardinal pose families or row-level direction instructions, simplify the pose or prop construction, change the deterministic extraction method, or redesign the problematic visual feature. If a repair merely moves a failure to another cell or gate, treat that as a cycle and change strategy immediately. 更换策略后，若同类根因仍连续两次失败且没有上述可验证进展，停止本轮生成；保留已通过的产物、失败样本和 QA 记录，报告剩余问题及后续可选方案，不标记完成、不打包失败宠物。不得通过改名错误类别或反复换提示词重置该停止条件。
 
 Use elapsed-time checkpoints:
 
 - At 15 minutes, verify the run is on pace and that the remaining dependency path is bounded.
 - At 25 minutes, prioritize the shortest quality-preserving path through remaining blockers and avoid optional polish.
-- At 30 minutes, continue only when the remaining work is clearly converging and bounded, such as final validation, one targeted repair, or packaging.
-- Keep recording elapsed time, retries, validation failures, and QA cost throughout the run, but do not pause or stop solely because elapsed time crosses 45 or 60 minutes. Continue until the pet passes, the user cancels, or a genuine external blocker prevents further progress.
+- 到 30 分钟时，只有剩余工作明确收敛且有界时才继续，例如最终验证、一次针对性修复或打包；记录下一步要关闭的门禁及预计剩余工作量。无法给出有证据的收敛路径时，按本节停止条件保留产物并结束本轮生成。
+- 持续记录耗时、重试、验证失败和 QA 成本；超过 45 或 60 分钟本身不是失败理由，但也不构成无限续跑授权。每次修复后重新核对收敛证据；出现上面的重复失败条件、用户取消或实际外部阻塞时停止本轮，未通过全部验收前保持未完成状态。
 
 Never use the time target to skip blind direction QA, labeled semantics, continuity review, atlas validation, despill validation, final visual QA, or any other acceptance criterion.
 
@@ -325,7 +325,7 @@ CHROMA_KEY=$(jq -r '.chroma_key.hex' "$RUN_DIR/pet_request.json")
   --output "$RUN_DIR/decoded/look-anchors-approved.png"
 ```
 
-Approve the four extracted anchors semantically at final pet size. If one cardinal fails, regenerate that individual anchor with `prompts/look-anchor-repairs/<degree>.md`, replace only its extracted file, and rerun `compose_cardinal_anchor_strip.py`. Both final look rows use the approved cardinal strip, and row 10 additionally uses completed row 9. Mark the job complete only after its required deterministic and visual checks pass:
+Approve the four extracted anchors semantically at final pet size. 单个基准方向失败时先排除确定性提取问题；确认锚点源图有 `major` 语义错误后，才使用 `prompts/look-anchor-repairs/<degree>.md` 重生成该锚点、替换其提取文件并重跑 `compose_cardinal_anchor_strip.py`。Both final look rows use the approved cardinal strip, and row 10 additionally uses completed row 9. Mark the job complete only after its required deterministic and visual checks pass:
 
 ```bash
 UPDATED_AT=$(date -u +%Y-%m-%dT%H:%M:%SZ)
@@ -441,7 +441,7 @@ Inspect `qa/contact-sheet.png` and `qa/previews/*.gif` before generating look ro
 
 Every new pet must complete this stage. After standard-row QA passes, write `qa/look-mechanics.md`, approve the four cardinals, synthesize and validate the complete `look-row-9`, then synthesize `look-row-10`. Row 10 becomes ready only after row 9 is deterministically registered, clears post-registration edge checks, and has no semantic or continuity hard failure; reviewed warnings may remain. It uses row 9 plus the approved cardinal strip as continuity evidence.
 
-Before either look row, run the prepared `look-cardinals` strip job, extract its four cells with `extract_cardinal_anchors.py`, and approve them. Do not let a two-row sweep invent its own left/right basis. `090` must point toward the viewer's screen-right edge and `270` toward the viewer's screen-left edge; for faces, the nose tip and pupils must cross to the corresponding side of the head center. If one cardinal is ambiguous, regenerate only that anchor before continuing.
+Before either look row, run the prepared `look-cardinals` strip job, extract its four cells with `extract_cardinal_anchors.py`, and approve them. Do not let a two-row sweep invent its own left/right basis. `090` must point toward the viewer's screen-right edge and `270` toward the viewer's screen-left edge; for faces, the nose tip and pupils must cross to the corresponding side of the head center. 基准方向模糊时，按上述锚点修复流程排除提取问题；源图语义为 `major` 错误时，只重生成该锚点，通过后再继续。
 
 After copying row 9 into `decoded/look-row-9.png`, register and edge-check it with the same transform used by final assembly:
 
@@ -456,7 +456,7 @@ After copying row 9 into `decoded/look-row-9.png`, register and edge-check it wi
   --registration-manifest-output "$RUN_DIR/qa/look-row-9-registration.json"
 ```
 
-Inspect the eight registered cells at normal pet size in `000` through `157.5` order. Record the row-9 semantic and adjacent-continuity review, resynthesize the complete row for any hard failure, and mark `look-row-9` complete only after this check passes. That completion makes row 10 ready in `imagegen-jobs.json`.
+Inspect the eight registered cells at normal pet size in `000` through `157.5` order. 记录 row 9 的语义及相邻连续性检查；hard failure 先按 Repair Workflow 排除确定性配准、提取或组装问题，只有源图 `major` 错误才重新生成完整行。仅在检查通过后将 `look-row-9` 标记完成，使 row 10 在 `imagegen-jobs.json` 中就绪。
 
 Generate only the additional look-direction visuals with `$imagegen`:
 
@@ -474,7 +474,7 @@ Generate only the additional look-direction visuals with `$imagegen`:
 - Cardinal directions must be semantically unmistakable at final pet size, not only numerically or geometrically different. `000` must clearly read as looking up, `090` as looking right, `180` as looking down, and `270` as looking left using the pet's natural mechanism. If the pet has no pupils or physical eyeballs, the head, face surface, eyelids, antennae, ears, or body bend must carry the direction clearly enough that a viewer can identify the cardinal without labels.
 - Diagonal and intermediate directions should broadly occupy the intended quadrant and advance naturally through the ordered loop. Minor pupil, nose, eyelid, or feature-placement deviations are not failures by themselves. Reject only gross wrong-quadrant poses, visible reversals, or intermediate cells that break the coherent motion family.
 - For eyeless object pets, do not default to literal whole-object rotation just because the object is rigid. First identify whether the object has a natural front, display face, playable surface, readable silhouette, or iconic viewing angle. Preserve that primary readable face unless the user explicitly asks for turntable rotation. Express look direction through subtle object-specific body language: small lean, neck/tip aim, hinge, yaw, pitch, bend, vibration, squash, follow-through, or attached-part motion. The direction should read as attention or orientation, not as the object spinning through all clock angles.
-- Preserve the pet's original eye design in look-direction cells. Do not paint new round "googly" eyes, replacement eye whites, floating pupils, detached eye dots, or a second eye layer on top of the source eyes. Eye motion must follow the look mechanics decision. If the pet has physical eyeballs, rotate or redraw the whole eyeball surface so the sclera/eye white, iris, pupil, eyelids, rim, and highlights change together as one physical eye; do not slide only the iris or pupil across a fixed eye white. If the pet has flat printed, sticker, or screen eyes, keep the surface fixed and move/redraw only the features that would physically change on that surface. Do not use procedural pupil/iris compositing unless it is clipped to the original eye aperture and visibly remains inside the head silhouette in every direction. If the original eye design cannot be preserved cleanly, regenerate the whole look cell with the original eye construction instead of compositing new eyes over it.
+- Preserve the pet's original eye design in look-direction cells. Do not paint new round "googly" eyes, replacement eye whites, floating pupils, detached eye dots, or a second eye layer on top of the source eyes. Eye motion must follow the look mechanics decision. If the pet has physical eyeballs, rotate or redraw the whole eyeball surface so the sclera/eye white, iris, pupil, eyelids, rim, and highlights change together as one physical eye; do not slide only the iris or pupil across a fixed eye white. If the pet has flat printed, sticker, or screen eyes, keep the surface fixed and move/redraw only the features that would physically change on that surface. Do not use procedural pupil/iris compositing unless it is clipped to the original eye aperture and visibly remains inside the head silhouette in every direction. 若确认源图眼部构造存在 `major` 身份或语义错误，保留原有眼睛设计重新生成该方向所在的完整行；不要叠加新眼睛或单独拼补最终单元。
 - Eyes may lead the gaze, but pupil-only motion is an exception, not the default. Use it only when the look mechanics decision explains why whole-eye rotation, eyelid reshaping, body, head, or feature movement would be unnatural for that specific design. Large-eye pets, cyclops pets, and round rigid-body pets with physical eyeballs usually should rotate the whole eye globes, not use pupil-only or googly-eye sliding. Screen-face pets and printed-eye pets may be body-locked with feature motion only. Separate head/body pets should usually combine eye movement with head turn, head tilt, ear/fur/upper-body follow-through, and a stable torso. Rigid object mascots may hinge, flex, slide, or shift attached features without rotating the whole sprite. Flexible wire or paperclip-like mascots should usually keep the feet/base anchored while the upper loop or face area bends toward the target and held props remain stable or lag subtly. Blob or organic pets should usually keep a base anchored while the face/head area stretches subtly toward the target. Other pet types should get their own similarly grounded mechanics.
 - Human or humanoid pets need persona-preserving look mechanics. Do not use broad non-rigid raster warps that stretch the skull, brows, mouth, hoodie, hands, or held props just to make a direction read. The eyes should usually lead the gaze with visible eye, eyelid, and eyebrow participation, then the head/neck and upper body should follow subtly; a humanoid row where the head moves but the eyes stay locked in one expression is failed unless the mechanics decision gives a specific physical reason. Use small eye rotation, eyelid/eyebrow changes, head/neck turn, and restrained upper-body follow-through while preserving facial proportions and expression. Programmatic repairs must move anatomical parts with rigid or near-rigid part motion, not displacement fields that change facial feature spacing. For pets with held, worn, or attached props, infer each prop's physical constraints before generating look directions: where it is anchored, whether it is rigid or flexible, whether it leads or lags the body, and how it should occlude or be occluded as the character turns. Props near the face may become more side-on, partly hidden by the head, or reveal different contact points; hand-held tools may swing or lag subtly while staying attached; worn props should follow the body; flexible cords or straps should arc continuously. Do not keep the prop and character in the same front-facing relationship across all look directions. Before packaging a humanoid pet, inspect the normal-size neutral and cardinal cells together and reject identity or facial-proportion drift, or a `270` cardinal that does not unmistakably read as left.
 - For every pet, use cardinal anchors instead of trusting a two-row sweep to preserve left/right semantics. Generate `000`, `090`, `180`, and `270` together as one strip, then extract and approve them. The final look rows use those four pose families for direction meaning and interpolate the intermediate directions as a coherent arc. Define directions in viewer/screen coordinates, never character-relative coordinates. Do not require exact pupil or nose placement on intermediate poses; use the ordered loop and overall quadrant motion as the primary evidence.
@@ -494,7 +494,7 @@ row 10: 180, 202.5, 225, 247.5, 270, 292.5, 315, 337.5
 
 Judge the completed 16-pose loop as an animation family. Cardinals must match their single axis exactly. Intermediate directions should preserve the intended axes, but isolated blind-review uncertainty is evidence for labeled loop review rather than an automatic regeneration trigger.
 
-Hard failures require row regeneration:
+以下 hard failures 阻止打包，按 Repair Workflow 分类修复；只有确认源图存在 `major` 错误时才重新生成对应完整行，确定性问题先修复处理流程：
 
 - a cardinal anchor is wrong or ambiguous: `000` up, `090` screen-right, `180` down, or `270` screen-left
 - a blind cardinal classification contradicts or cannot confirm `000` up, `090` screen-right, `180` down, or `270` screen-left
@@ -511,7 +511,7 @@ Review warnings do not require regeneration by themselves:
 
 Before accepting the v2 atlas, create a focused direction QA sheet showing the neutral/rest frame next to all 16 look cells, labeled by degree and expected direction, at approximately the in-app display size. Run the adjacent continuity measurement separately and treat its findings as motion-review evidence, not automatic direction failures.
 
-Perform an explicit semantic review for every direction and record `pass`, `warning`, or `fail`, plus separate visible evidence for its horizontal and vertical axes. A warning may accept blind-review uncertainty for an intermediate pose when labeled normal-size review confirms the intended axes and the ordered loop remains coherent. It may not waive a wrong or ambiguous cardinal, a labeled wrong-quadrant pose, or a visible reversal. If a direction receives `fail`, strengthen the containing row's instructions and resynthesize that complete coherent row. Never replace the final normalized cell directly.
+Perform an explicit semantic review for every direction and record `pass`, `warning`, or `fail`, plus separate visible evidence for its horizontal and vertical axes. A warning may accept blind-review uncertainty for an intermediate pose when labeled normal-size review confirms the intended axes and the ordered loop remains coherent. It may not waive a wrong or ambiguous cardinal, a labeled wrong-quadrant pose, or a visible reversal. 方向为 `fail` 时，先按 Repair Workflow 确认原因和严重度；源图方向语义存在 `major` 错误时，强化该行约束并重新生成完整连贯行。Never replace the final normalized cell directly.
 
 Look rows must have transparent backgrounds after assembly. Do not accept or install the pet if `qa/look-directions.png` or `qa/contact-sheet-extended.png` shows chroma-key panels behind any look cell. If generated look rows contain slight chroma-key lighting variation, rerun assembly with a wider `--chroma-threshold` instead of packaging the opaque key color. Validation must pass without opaque chroma-key-pixel errors.
 
@@ -525,7 +525,7 @@ Use the run's selected chroma key for every assembly path; omitting it falls bac
 CHROMA_KEY=$(jq -r '.chroma_key.hex' "$RUN_DIR/pet_request.json")
 ```
 
-Extended assembly reuses the approved registered row-9 cells and persisted scale exactly. It removes the chroma background from row 10, detects its eight separated pose groups, preserves their left-to-right order, crops each complete pose without fixed-slot slicing, and fits them against the same neutral-frame scale, lower-body anchor, and baseline. Only then does it apply the near-edge clipping check to row 10's normalized `192x208` cells. If pose-group recovery is ambiguous, or if row 10 cannot fit the approved row-9 transform without failing the post-registration edge check, resynthesize row 10; do not rescale row 9, patch an individual final cell, or relax the threshold for acceptance.
+Extended assembly reuses the approved registered row-9 cells and persisted scale exactly. It removes the chroma background from row 10, detects its eight separated pose groups, preserves their left-to-right order, crops each complete pose without fixed-slot slicing, and fits them against the same neutral-frame scale, lower-body anchor, and baseline. Only then does it apply the near-edge clipping check to row 10's normalized `192x208` cells. 姿势分组不明确或 row 10 无法通过配准后边缘检查时，先核对确定性提取与配准；确认源图存在 `major` 问题后才重新生成 row 10。不得为通过验收重缩放已批准的 row 9、拼补单个最终单元或放宽阈值。
 
 ```bash
 "$PYTHON" "$SKILL_DIR/scripts/assemble_extended_atlas.py" \
@@ -631,7 +631,7 @@ After receiving a blind or final visual QA `pass`/`fail` result:
 3. Classify the failure as `major` or `minor`:
    - `major`: wrong or ambiguous cardinal; labeled normal-size review confirms a wrong principal quadrant or visible reversal; conspicuous snap, scale pop, identity change, broken attachment, clipping, interior seam/hole, or deterministic validation failure.
    - `minor`: exact pupil or nose placement differs from the numerical ideal; a near-vertical horizontal cue is subtle; isolated reviewers disagree or return `ambiguous`; an intermediate blind majority conflicts but the labeled ordered loop still reads correctly; continuity metrics warn without a visible defect.
-4. Major failures require repair. Minor failures may be overridden and the installation pipeline continues.
+4. `major` 必须修复，但不等于必须重新生成：确定性问题先按 Repair Workflow 处理，只有源图 `major` 错误才重新生成。`minor` 可按下述留证规则接受后继续安装流程。
 5. Record every override in `qa/blind-review-resolution.json` with `decision: "accept"`, `severity: "minor"`, the failed checks, the labeled/continuity evidence that makes them acceptable, and `reviewed_by: "parent"` or `"user"`. Never override a major failure.
 
 An override is a deliberate visual judgment, not a way to silence missing evidence. The blind sheet, consensus verdicts, validation output, labeled semantics, continuity report, and resolution file all remain in the final QA artifacts.
@@ -858,7 +858,13 @@ repair_notes=<short row-specific notes, or none>
 
 ## Repair Workflow
 
-If frame inspection or final visual QA fails, read `qa/review.json`, regenerate the smallest failing row, copy the replacement row into the same decoded output path, and keep that job marked complete with the new `source_path` and `completed_at`. Repair the failed row, not the whole sheet.
+帧检查或最终视觉 QA 失败时，先读取 `qa/review.json` 和相关语义、连续性、盲审记录，按错误类别及 `major` / `minor` 严重度选择修复：
+
+1. 提取、配准、透明度、色键或组装等确定性问题，优先使用现有确定性流程修复并重验；色键仍遵守单次 despill 与失败即报告管线问题的专门规则，不以图片重生成替代。
+2. `minor` 按 Blind Review Severity Resolution 留证后接受，不自动重生成；缺少必要 QA 证据必须补齐，不能降为 `minor`。
+3. 只有确认源图本身存在 `major` 错误时，才重新生成最小受影响行。方向行必须保持一次完整 8 帧生成的来源，禁止拼补单元，也不要重做整张图集；尚未用于方向行生成的基准锚点，仍按既有锚点流程单独修复。
+4. 替换图复制到原 decoded 路径后，先重跑受影响的确定性及独立视觉 QA，再更新 `source_path`、`completed_at` 并标记 job complete；修复中或验证失败的 job 不得继续保持完成状态。
+5. 所有修复遵守 Time Budget And Convergence 的收敛与停止条件；停止时保留可复用产物和 QA 证据，保持未完成状态。
 
 ## Rules
 
@@ -875,7 +881,7 @@ If frame inspection or final visual QA fails, read `qa/review.json`, regenerate 
 - Do not derive or reuse `waiting`, `running`, `failed`, `review`, `jumping`, or `waving` from another state; each has distinct app semantics and must be generated as its own row.
 - Generate look row 9 directly from the approved cardinal strip, then generate row 10 only after row 9 clears deterministic registration and post-registration edge QA and has no semantic or continuity hard failure. Reviewed warnings do not block row 10. Both rows attach the cardinal strip, and row 10 must also attach completed row 9.
 - Final look rows must each originate from one coherent 8-frame row generation. Individually generated repair cells may never be copied into the final atlas.
-- If one look direction fails, strengthen the containing row's direction instructions and resynthesize the complete row. Do not patch the final cell directly, even when deterministic assembly supports individual-cell input.
+- 方向检查失败时按 Repair Workflow 分类；只有确认源图存在 `major` 错误才强化约束并重新生成对应完整行。不得直接拼补最终单元，即使确定性组装支持独立单元输入。
 - Deterministically register each coherent look row, then run final-cell edge diagnostics and explicit labeled semantics immediately after generation, before expensive final atlas assembly. Run blind horizontal-and-vertical axis QA as soon as both coherent rows exist.
 - Never substitute locally drawn, tiled, transformed, or code-generated row strips for missing `$imagegen` outputs.
 - Only mark a visual job complete after its selected output has been copied into the decoded output path.

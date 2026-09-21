@@ -51,7 +51,7 @@ description: 进行 Android、Java、Kotlin、Gradle 开发，修改 Android 项
 
 ## 文档规范
 
-- `comp-platform-api` 下代码发生变更时，需要同步更新 `docs` 文档。
+- `comp-platform-api` 的公开接口、行为或使用方式发生变更时，同步更新受影响的 `docs` 文档；仅内部重构、日志或 import 调整不强制改文档。
 - 文档应放在 `docs` 下对应的文档目录中。
 - 组件化依赖与 Maven 发布机制说明见 `docs/dev/组件化依赖与 Maven 发布机制说明.md`。
 
@@ -59,7 +59,7 @@ description: 进行 Android、Java、Kotlin、Gradle 开发，修改 Android 项
 
 - 创建新的module应该增加 .gitignore 文件，参考根目录的 .gitignore
 - 与组件自身能力无强绑定的大资源，优先放在壳工程 `assets`，不要放在组件 `assets`；组件文档需说明资源路径，运行期缺失时要主动报错或打印清晰日志。
-- 新建 Android 空 application 工程后，需要配置 `local.properties` 的 Android SDK 路径：`sdk.dir=/Volumes/Western_2T/Library/Android/sdk`；如果该路径不可用，先在本机查找实际 SDK 路径并同步更新本条规范。
+- 新建 Android 空 application 工程后，需要配置 `local.properties` 的 Android SDK 路径：`sdk.dir=/Volumes/Western_2T/Library/Android/sdk`；如果该路径不可用，查找本机实际 SDK 路径，仅更新当前工程的 `local.properties`，不因此修改个人 skill。
 
 ## 构建验证
 
@@ -73,18 +73,18 @@ description: 进行 Android、Java、Kotlin、Gradle 开发，修改 Android 项
 jps -lv
 ```
 
-如果存在 BUSY 的 Gradle daemon、Android Studio 正在 Build/Run，或多个 Gradle/Kotlin daemon 明显占用资源，暂停构建并提示用户确认。Gradle 构建优先使用 `--no-daemon`，没有明确缓存问题时禁止执行 `./gradlew clean`。当前项目凡是涉及构建、测试、安装或真机验证，统一使用 `uat` 渠道，除非用户明确指定其他渠道。完整构建优先使用：
+如果发现本项目已有构建正在运行，先复用其结果；只有存在共享资源冲突或明显资源不足时才延后新构建，不中止其他构建进程。需要中止用户或其他任务的构建时再请求确认。Gradle 构建优先使用 `--no-daemon`，没有明确缓存问题时禁止执行 `./gradlew clean`。渠道和构建任务遵循当前项目配置；仅在项目已约定 `uat` 为验收渠道时默认使用 `uat`，用户明确指定的渠道优先。具有 `app-flame` 模块和 `uat` 渠道的项目可使用：
 
 ```bash
 ./gradlew :app-flame:assembleUatDebug --stacktrace --no-daemon
 ```
 
-如果构建命令已包含 `--no-daemon`，完成后不需要再执行 `./gradlew --stop`；只有未使用 `--no-daemon` 或发现后台存在异常 Gradle daemon 时才执行 `./gradlew --stop`。
+构建完成后不例行执行 `./gradlew --stop`。发现异常 daemon 时先诊断；只有已获清理授权且核实目标进程归属和闲置状态时，才按进程清理 skill 定向处理，不停止其他任务的构建。
 
 ## 排查日志
 
 - Android 报错优先用 `adb` 抓日志分析。
-- 如果 `adb devices` 没有可用模拟器或开发任务需要 Android 模拟器，先执行 `mobile-emulator ensure android` 自动启动本机默认 AVD，不要每次临时推导 emulator 启动命令。
+- 需要设备验证且没有可用真机和在线模拟器时，按下方设备测试规范启动已有 AVD；用户明确要求模拟器验证时遵循该要求。
 - 为节省上下文，先清空日志，再复现问题，然后按包名、tag、异常关键词过滤并限制行数。
 - 常用流程是 `adb logcat -c`，复现后执行 `adb logcat -d -v time | rg "YLog|AndroidRuntime|FATAL EXCEPTION|Exception|<包名或关键词>" | tail -200`。
 
@@ -93,6 +93,6 @@ jps -lv
 ## **Android 设备测试规范**
 
 - Android 开发后的安装、运行和测试优先使用 **ADB 已连接的真机**；有真机时不为本轮验证另启模拟器。
-- 没有已连接真机时，优先复用**已在线的 Android 模拟器**；也没有在线模拟器时，调用 `mobile-emulator ensure android` 自动启动一个本机已有实例，等待 ADB 连接并进入 `device` 状态后继续验证，不能仅因没有在线模拟器就结束任务。
+- 没有已连接真机时，优先复用**已在线的 Android 模拟器**；两者都没有且本轮确需设备验证时，若 `mobile-emulator` 可用，调用 `mobile-emulator ensure android` 启动已有实例；不可用时优先使用项目现有启动脚本，或通过本机 Android SDK 的 `emulator -list-avds` 选择已有兼容 AVD 并用 `emulator -avd <名称>` 启动。以 ADB 进入 `device` 状态为就绪条件，单次启动最多等待 120 秒；超时、缺少兼容 AVD 或启动工具不可用时报告阻塞，并继续可独立完成的验证，不循环重启或自动下载系统镜像。
 - 真机锁屏时优先使用已有的 **Android 设备解锁脚本/自动化能力**检测屏幕与锁屏状态并完成解锁，不复制、不记录、不回显 PIN、密码等敏感信息。
 - 多个 Android 真机或模拟器同时连接、无法确定测试对象时，先明确目标设备或 `serial`，后续 ADB、安装、启动、日志和 UI 测试均固定指定该设备，不擅自批量执行单设备 UI 测试。

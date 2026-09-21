@@ -1,6 +1,6 @@
 ---
 name: repair-codex-remote-connection
-description: 诊断并修复 macOS 上 Codex Remote Control、手机远程连接、Remote 页面或远程主机离线问题。用户提到 Codex 远程连接失败、Remote Control 一直 Connecting/Errored、WebSocket 30 秒超时、蜂窝加速器/Clash/Surge 等本地代理下 Codex 普通请求可用但远程不可用、重启后仍失败、remote app server already online、409 Conflict，或要求检查 Codex 与代理日志时使用。
+description: 排查 macOS Codex Remote Control 或手机远程主机连接失败，包括代理超时、重复登记和桌面与 daemon 冲突；普通下载故障不适用。
 ---
 
 # 修复 Codex 远程连接
@@ -76,7 +76,7 @@ codex doctor --json
 
 停止命令可能超时，但 daemon 已经实际退出。以 `codex doctor` 的 `background server is not running` 和进程检查为准，不要仅凭停止命令退出码判断。
 
-如果用户明确需要无桌面应用的常驻 CLI 主机，才保留 daemon，并用显式代理启动：
+如果用户明确需要无桌面应用的常驻 CLI 主机，保留 daemon；仅已确认需通过代理时才带代理启动，直连正常时使用普通启动命令。代理启动示例：
 
 ```bash
 HTTP_PROXY=http://127.0.0.1:7890 \
@@ -98,24 +98,23 @@ codex remote-control start --json
 
 ## 重启与验证
 
-如果当前任务就在 Codex 桌面应用中，不要直接退出应用，否则会中断当前对话。完成配置后，让用户执行 `⌘Q` 完全退出 `/Applications/ChatGPT.app`，再重新打开；关闭窗口不算完整退出。
+仅在修复需要新进程继承配置时重启。若需要重启当前承载对话的桌面应用，先完成可执行的修复并说明原因，再让用户执行 `⌘Q` 完全退出实际安装的应用后重新打开；关闭窗口不算完整退出。连接已恢复且无需重新加载配置时不额外重启。
 
-重启后必须同时满足：
+按本次故障与目标连接路径选择验收项：
 
-1. 新桌面 app-server PID 的环境中存在正确的 `HTTP_PROXY`、`HTTPS_PROXY`。
-2. 目标是桌面 Remote 时，托管 daemon 未运行。
-3. 新 PID 的日志出现：
+1. 验收实际承载连接的进程：桌面 Remote 检查内嵌 app-server，CLI 主机检查托管 daemon。两者不同时占用同一远程登记，不停止无关主机。
+2. 仅修复代理继承或代理路径时，检查该进程的代理环境与到正确代理端口的连接；直连正常或仅修复登记、配对时，不要求代理变量或代理套接字。
+3. 当前连接进程在修复后的日志中出现连接成功记录，例如：
 
    ```text
    remote control websocket status changed ... next_status=Connected
    connected to app-server remote control websocket
    ```
 
-4. 新 PID 启动后的远程模块没有新的 `WARN` 或 `ERROR`。
-5. 能看到该 PID 到本地代理端口的 `ESTABLISHED` 连接。
-6. 手机端刷新 Remote 页面后能重新选择主机。
+4. 原故障不再复现，没有影响连接的新错误；无关的历史告警不作为重复修复的理由。
+5. 手机端刷新 Remote 页面后能重新选择目标主机。
 
-观察至少 60 秒，避免把一次瞬时连接当作修复完成。
+针对原 30 秒超时或反复断线，使用修复后覆盖至少 60 秒的连续连接日志或观察结果验证稳定性；已有足够证据时不重新空等。其他故障使用对应的复现与连接验证。
 
 ## 安全边界
 

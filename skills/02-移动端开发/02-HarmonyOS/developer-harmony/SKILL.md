@@ -46,16 +46,16 @@ description: 进行 HarmonyOS、ArkTS、ArkUI、Hvigor 开发，修改鸿蒙项�
 
 - 鸿蒙报错优先用 `hdc` 抓日志分析。
 - 安装、运行和测试先用 `hdc list targets -v` 发现 `Connected` 设备，优先真机（USB 或非回环 TCP）；有真机时不额外启动模拟器。多个真机的单设备测试需先明确目标。
-- 没有真机时复用已在线的鸿蒙模拟器（本机回环 TCP）；两者都没有时执行 `mobile-emulator ensure harmony`，启动一个已有 HVD 并等待 HDC 连接，然后继续安装和验证。具体入口见 [mobile-emulator-auto-start](../../04-模拟器与设备/mobile-emulator-auto-start/SKILL.md)。
+- 没有真机时复用已在线的鸿蒙模拟器（本机回环 TCP）；两者都没有且本轮确需设备验证时，按下方设备测试规范启动已有 HVD。
 - 真机锁屏时按 [harmony-device-unlock](../../04-模拟器与设备/harmony-device-unlock/SKILL.md) 调用本地脚本；不要打印 PIN，不自动清空应用数据解决签名问题。
 - 使用项目已有构建、安装和测试脚本；若脚本仍强制只用模拟器，应同步修正设备选择。实际验证必须注明真机或模拟器、系统版本、渠道和制品，连接或启动失败不能冒充通过。
 - 为节省上下文，先清空或记录复现窗口，再按包名、tag、异常关键词过滤，并限制输出行数。
-- 常用方式是复现后执行 `hdc hilog | rg "Error|Exception|Fatal|<包名或关键词>" | tail -200`。
+- 一次性读取复现日志使用 `hdc shell hilog -x | rg "Error|Exception|Fatal|<包名或关键词>" | tail -200`；多个设备时为 `hdc` 指定目标。需要实时采集时先确定截止时间或结束事件，避免将持续日志流直接传给等待输入结束的 `tail`。
 
 
 
 ## 鸿蒙设备测试规范
 
 - HarmonyOS 开发后的安装、运行和测试优先使用 HDC 已连接的真机；有真机时不为本轮验证另启模拟器。
-- 没有已连接真机时，复用在线鸿蒙模拟器；也没有在线模拟器时，调用 `mobile-emulator ensure harmony` 自动启动一个本机已有实例，等待 HDC 连接后继续验证，不能仅因没有在线模拟器就结束任务。
+- 没有已连接真机时，复用在线鸿蒙模拟器；两者都没有且本轮确需设备验证时，若 `mobile-emulator` 可用，调用 `mobile-emulator ensure harmony` 启动已有实例；不可用时使用项目现有启动脚本或 DevEco Studio 的设备管理器启动已有兼容 HVD。以 HDC 显示 `Connected` 为就绪条件，单次启动最多等待 120 秒；超时、缺少兼容 HVD 或启动工具不可用时报告阻塞，并继续可独立完成的验证，不循环重启或自动下载系统镜像。
 - 真机锁屏时使用 `harmony-device-unlock` 的本地脚本检测和解锁，不复制或回显 PIN。多个真机无法确定测试对象时先明确目标，不擅自批量执行单设备 UI 测试。

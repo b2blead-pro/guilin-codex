@@ -1,20 +1,22 @@
 ---
 name: fullstack-product-standards
-description: 通用前后端一体 Web 产品开发规范。Use when Codex needs to design, implement, review, refactor, or validate a fullstack TypeScript web product, especially projects using Next.js, React, Ant Design, React Query, NestJS, Docker, Nginx, PostgreSQL, search services, Playwright browser validation, or when the user asks for development standards, UI design standards, UI implementation rules, interaction rules, deployment rules, or frontend/backend integration guidelines.
+description: 用于 TypeScript 前后端一体 Web 产品的设计、开发、审查、联调和部署，以及此类项目的工程与 UI 规范制定。按任务选用相关规范，沿用现有技术栈。
 ---
 
 # 前后端一体项目开发规范
 
 ## 使用原则
 
-- 先阅读当前项目的需求文档、设计稿、接口文档、现有代码和项目级 skill，再做实现判断。
+- 先阅读与本次任务直接相关的代码和项目规范；涉及需求、视觉、接口契约或部署时，再按需读取对应文档。
 - 默认使用中文沟通；代码、命令、包名、接口名、环境变量保持英文原文。
 - 优先复用项目现有框架、目录结构、样式变量、组件模式、接口封装和错误处理方式。
 - 改动范围保持克制，只解决当前目标，不顺手做无关重构。
 - 前端可见交互、路由、动画、菜单、表单、下载、搜索、拖拽等改动完成后，优先用 Playwright 做真实浏览器验证。
-- 如果项目已有明确规范，以项目规范优先；本 skill 作为默认工程和体验基线。
+- 如果项目已有明确规范，以项目规范优先；本 skill 作为默认工程和体验基线，仅应用与当前任务相关的章节。纯设计稿遵循用户的设计资产豁免，局部修改不扩展为无关的架构、文档或部署工作。
 
 ## 推荐技术栈
+
+以下技术栈和目录约定用于新建且尚未确定选型的项目；已有项目沿用现有方案。
 
 ### 前端
 
@@ -155,6 +157,8 @@ description: 通用前后端一体 Web 产品开发规范。Use when Codex needs
 
 ## 部署规范
 
+仅本次涉及部署或部署脚本时应用以下要求，并按既有用户授权和项目规范核对目标环境。
+
 - Dockerfile 要考虑空目录、构建缓存、生产依赖、静态资源和 standalone 产物。
 - Docker Compose 中服务名应稳定，内部访问通过服务名，外部访问通过 Nginx 端口。
 - 数据目录、上传目录、导出目录、索引目录要持久化。
@@ -168,17 +172,18 @@ description: 通用前后端一体 Web 产品开发规范。Use when Codex needs
 
 ## 验证规范
 
-- 代码修改后优先执行与改动范围匹配的最小验证：
-  - 前端样式/交互：`npm run build -w frontend` + Playwright。
-  - 后端逻辑/API：`npm run build -w backend` + 对应测试/API 调用。
-  - 跨端联调：Docker Compose 启动 + 浏览器验证。
-  - Dockerfile/脚本：实际 build 或 `bash -n`。
-- Playwright 验证要覆盖真实操作：点击、输入、悬浮、失焦、拖拽、路由跳转、下载、接口错误提示。
-- 验证失败时继续定位和修复；最终说明已验证命令、结果和剩余风险。
+- 代码修改后执行与改动范围和风险匹配的最小验证，命令沿用项目现有入口：
+  - 前端样式/交互：用 Playwright 验证受影响的真实页面和操作，可复用已运行且包含本次改动的应用。
+  - 后端逻辑/API：运行相关测试或真实 API 调用。
+  - 跨端联调：复用可用的联调环境；需要启动服务时按项目现有方式启动，并验证相关接口及客户端操作。
+  - Dockerfile/脚本：根据改动选择实际 build、`bash -n` 或相关运行验证。
+- 打包、类型、依赖、编译产物受影响或项目门禁要求时，执行对应模块构建，例如 `npm run build -w frontend` 或 `npm run build -w backend`。
+- Playwright 只覆盖本次受影响的真实操作和状态，例如点击、输入、悬浮、失焦、拖拽、路由、下载或接口错误提示；验证已通过后，只有新改动、失败或具体疑点才扩大或重复检查。
+- 验证失败先归因，继续修复本次改动或当前已授权目标所需的问题，包括用户已授权的前后端联动；无关既有失败或无法推进的外部阻塞保留证据并说明，不扩展修复范围或原样反复重试。最终说明已验证结果和剩余风险。
 
 ## 文档规范
 
-- 需求、接口、UI、性能、部署、排查和决策要分文档沉淀。
+- 仅维护与本次变更相关的需求、接口、UI、性能、部署、排查或决策资料，优先更新已有文档；需要独立维护时再分文档沉淀。
 - 接口文档必须同步菜单/页面动作和实际 API。
 - UI 规范要说明颜色、圆角、布局、选中态、弹层、图标和动画，不只贴设计图。
 - 性能文档要记录缓存 key、并发锁粒度、任务状态、索引策略和失效规则。
@@ -189,5 +194,5 @@ description: 通用前后端一体 Web 产品开发规范。Use when Codex needs
 - 功能真实连后端，不用静态假数据冒充完成。
 - UI 与设计规范一致，状态完整，失败可见。
 - 接口契约、类型、错误处理和权限路径一致。
-- 构建或测试通过；前端交互用 Playwright 验证。
-- 部署脚本能在目标环境执行，失败时给出可行动错误信息。
+- 与改动范围匹配的验证通过；受影响的前端交互用 Playwright 做真实浏览器验证。
+- 本次涉及部署或部署脚本时，验证脚本能在已确认的目标环境执行，失败时给出可行动错误信息。

@@ -31,7 +31,7 @@ Do not package a pet until every section passes.
 - All 16 directions are present in fixed clockwise order and visibly distinct from neutral/rest.
 - Cardinal directions read unmistakably as up, right, down, and left; diagonals and intermediates read in the correct quadrant.
 - `qa/look-directions.png` includes full-body and zoomed head/upper-body views.
-- `qa/direction-semantics.json` records `pass`, `expected`, `observed`, and `reason` for every direction.
+- `qa/direction-semantics.json` 为每个方向记录 `verdict`（`pass` / `warning` / `fail`）、`expected`、`observed`、`reason`；不得遗留 `fail`，`warning` 须按主 SKILL 的 Direction Acceptance Policy 复核并留证。
 - `qa/look-continuity.json` has no unexplained holes, center jumps, area jumps, or local difference outliers.
 - Eyes, eyelids, head, body, appendages, and props follow the pet-specific look mechanics plan.
 - No whole-sprite rotation, replacement/googly eyes, visual clipping, seam bands, or transparent interior holes.
@@ -39,4 +39,4 @@ Do not package a pet until every section passes.
 
 ## Repair Policy
 
-Repair the smallest packaging-eligible scope: one standard row or one complete coherent look row. Never mix an individually generated repair cell into a new pet's final look row. Re-run assembly, deterministic validation, direction QA, continuity measurement, and semantic review after every relevant repair.
+按主 SKILL 的 Repair Workflow 先区分错误类别及严重度：确定性问题先修复处理流程，`minor` 按规则复核留证，只有源图 `major` 错误才重新生成最小受影响行。修复范围为一条标准行或一条完整连贯方向行，不把独立生成的修复单元拼入最终方向行。修复后重跑受影响的组装、确定性验证、独立方向 QA、连续性测量和语义检查；所有重试遵守 Time Budget And Convergence 的停止条件。
