@@ -1,0 +1,4 @@
+interface:
+  display_name: "前端 Playwright 验证"
+  short_description: "前端交互修改后使用 Playwright 浏览器验证"
+  default_prompt: "Use $frontend-playwright-validation to verify frontend UI and interaction changes with Playwright."

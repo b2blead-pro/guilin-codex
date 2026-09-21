@@ -1,0 +1,4 @@
+interface:
+  display_name: "修复 Codex 远程连接"
+  short_description: "诊断并修复 Codex Remote Control 的代理、WebSocket 与进程冲突"
+  default_prompt: "使用 $repair-codex-remote-connection 检查并修复当前 Mac 上的 Codex 远程连接失败。"

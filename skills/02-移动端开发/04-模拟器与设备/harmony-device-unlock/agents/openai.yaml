@@ -1,0 +1,4 @@
+interface:
+  display_name: "鸿蒙设备解锁"
+  short_description: "检测鸿蒙真机锁屏状态并通过本地脚本可靠完成设备解锁"
+  default_prompt: "使用 $harmony-device-unlock 检测并解锁当前连接的鸿蒙设备。"

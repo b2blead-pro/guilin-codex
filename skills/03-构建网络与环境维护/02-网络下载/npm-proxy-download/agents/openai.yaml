@@ -1,0 +1,4 @@
+interface:
+  display_name: "NPM 代理下载"
+  short_description: "npm 下载失败时检测本地代理端口并自动配置后重试"
+  default_prompt: "Use $npm-proxy-download to configure a local proxy and retry a failed npm-related download."

@@ -1,0 +1,4 @@
+interface:
+  display_name: "目标自动续跑"
+  short_description: "为目标任务创建定时续跑心跳，在额度恢复后自动继续推进工作"
+  default_prompt: "使用 $goal-auto-resume 为当前目标创建自动续跑心跳。"

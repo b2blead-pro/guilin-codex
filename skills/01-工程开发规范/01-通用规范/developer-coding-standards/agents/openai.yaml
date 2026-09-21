@@ -1,0 +1,4 @@
+interface:
+  display_name: "通用编码规范"
+  short_description: "按个人工程习惯完成代码修改、验证和说明。"
+  default_prompt: "使用 $developer-coding-standards 按我的通用编码规范完成这次代码修改。"

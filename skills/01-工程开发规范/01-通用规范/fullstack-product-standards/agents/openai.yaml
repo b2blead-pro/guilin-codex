@@ -1,0 +1,4 @@
+interface:
+  display_name: "Fullstack Product Standards"
+  short_description: "前后端一体产品开发、UI设计、交互体验和部署验证规范"
+  default_prompt: "Use $fullstack-product-standards to guide a fullstack web product implementation with consistent UI, interaction, validation, and deployment standards."

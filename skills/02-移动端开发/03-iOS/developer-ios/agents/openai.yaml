@@ -1,0 +1,4 @@
+interface:
+  display_name: "iOS 开发规范"
+  short_description: "iOS 工程包名、签名、证书和密码默认规则。"
+  default_prompt: "Use $developer-ios to handle the current iOS project according to the global iOS development rules."

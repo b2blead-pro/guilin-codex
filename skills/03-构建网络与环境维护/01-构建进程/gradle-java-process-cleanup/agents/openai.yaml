@@ -1,0 +1,4 @@
+interface:
+  display_name: "Gradle/Java 进程清理"
+  short_description: "检查并清理 Android 构建残留 Java 进程。"
+  default_prompt: "使用 $gradle-java-process-cleanup 检查并清理当前项目的 Gradle/Java 构建进程。"

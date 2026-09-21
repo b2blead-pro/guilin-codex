@@ -1,0 +1,7 @@
+interface:
+  display_name: "下载网络代理"
+  short_description: "下载或拉取网络失败时尝试本机代理重试。"
+  default_prompt: "Use $download-network-proxy when downloads, GitHub/raw access, git fetch, or package manager pulls fail because of network connectivity."
+
+policy:
+  allow_implicit_invocation: true
