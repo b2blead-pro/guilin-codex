@@ -1,0 +1,4 @@
+interface:
+  display_name: "后端开发规范"
+  short_description: "统一后端异常日志、全局异常处理、错误码与网关透传，确保安全追踪定位"
+  default_prompt: "请使用 $developer-backend 进行后端开发或审查，遵循后端异常处理规范。"
